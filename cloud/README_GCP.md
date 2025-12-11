@@ -8,9 +8,9 @@
 # Set your project
 gcloud config set project YOUR_PROJECT_ID
 
-# Create VM with good specs for optimization
+# Create VM with good specs for optimization (Frankfurt)
 gcloud compute instances create qtbtx-optimizer \
-    --zone=us-central1-a \
+    --zone=europe-west3-a \
     --machine-type=e2-standard-4 \
     --image-family=debian-11 \
     --image-project=debian-cloud \
@@ -20,7 +20,7 @@ gcloud compute instances create qtbtx-optimizer \
 ### Step 2: SSH into the VM
 
 ```bash
-gcloud compute ssh qtbtx-optimizer --zone=us-central1-a
+gcloud compute ssh qtbtx-optimizer --zone=europe-west3-a
 ```
 
 ### Step 3: Setup on VM
@@ -46,7 +46,7 @@ mkdir -p data/preprocessed
 From your local machine:
 ```bash
 # Upload data to VM
-gcloud compute scp --recurse /path/to/your/preprocessed/*.csv qtbtx-optimizer:~/QTbtx/data/preprocessed/ --zone=us-central1-a
+gcloud compute scp --recurse /path/to/your/preprocessed/*.csv qtbtx-optimizer:~/QTbtx/data/preprocessed/ --zone=europe-west3-a
 ```
 
 ### Step 5: Run Optimization
@@ -63,7 +63,7 @@ python3 run_optimizer.py --signal resist --data data/preprocessed --output resul
 
 From your local machine:
 ```bash
-gcloud compute scp --recurse qtbtx-optimizer:~/QTbtx/results/*.xlsx . --zone=us-central1-a
+gcloud compute scp --recurse qtbtx-optimizer:~/QTbtx/results/*.xlsx . --zone=europe-west3-a
 ```
 
 ---
@@ -109,7 +109,7 @@ docker push gcr.io/YOUR_PROJECT_ID/qtbtx-optimizer
 gcloud run deploy qtbtx-optimizer \
     --image gcr.io/YOUR_PROJECT_ID/qtbtx-optimizer \
     --platform managed \
-    --region us-central1 \
+    --region europe-west3 \
     --memory 4Gi \
     --timeout 3600 \
     --set-env-vars DATA_PATH=/data,OUTPUT_PATH=/output,SIGNALS=all
