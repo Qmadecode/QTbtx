@@ -1,0 +1,94 @@
+# Signal Configuration File
+# Defines conditions for each trading signal
+
+signals:
+  mount:
+    name: "MOUNT"
+    conditions:
+      - cyber_negative
+      - value_gt_vindex
+    trade_params:
+      exitbarslong: 10
+      stop_loss_pct: 0.05
+      trailing_trigger: 20.0
+
+  climb:
+    name: "CLIMB"
+    conditions:
+      - cyber_negative
+      - value_gt_vindex
+    trade_params:
+      exitbarslong: 10
+      stop_loss_pct: 0.05
+      trailing_trigger: 20.0
+
+  arrow:
+    name: "ARROW"
+    conditions:
+      - lower_close
+      - cyber_negative
+      - value_gt_vindex
+      - rsl_itrend_w_weak
+      - rsl_itrend_d_weak
+    trade_params:
+      exitbarslong: 10
+      stop_loss_pct: 0.05
+      trailing_trigger: 20.0
+
+  collect:
+    name: "COLLECT"
+    conditions:
+      - lower_close
+      - cyber_negative
+      - value_gt_vindex
+      - rsl_itrend_w_weak
+      - rsl_itrend_d_weak
+    trade_params:
+      exitbarslong: 10
+      stop_loss_pct: 0.05
+      trailing_trigger: 20.0
+
+  solid:
+    name: "SOLID"
+    conditions:
+      - cyber_negative
+      - value_gt_vindex
+      - rsl_itrend_w_weak
+      - rsl_itrend_d_weak
+      - rsl_close_weak
+      - lower_low
+      - lower_close
+      - lower_close_prev
+      - below_weekly_low
+    trade_params:
+      exitbarslong: 10
+      stop_loss_pct: 0.07
+      trailing_trigger: 12.0
+
+  resist:
+    name: "RESIST"
+    conditions:
+      - cyber_negative
+      - value_gt_vindex
+      - rsl_itrend_w_weak
+      - rsl_itrend_d_weak
+      - rsl_close_weak
+      - lower_low
+      - lower_close
+      - lower_close_prev
+      - below_weekly_low
+    trade_params:
+      exitbarslong: 10
+      stop_loss_pct: 0.05
+      trailing_trigger: 20.0
+
+# Default backtest configuration
+backtest:
+  start_date: '2022-12-01'
+  end_date: 'open'
+  initial_capital: 2000000
+  max_positions: 20
+  position_size_pct: 5.0
+  rsl_threshold: 100
+  cyber_threshold: 0
+
