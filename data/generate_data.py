@@ -143,13 +143,13 @@ def process_ticker(ticker, data, benchmark_close):
     """Calculate all indicators for a single ticker."""
     df = pd.DataFrame()
     
-    # Basic OHLCV
+    # Basic OHLCV (uppercase to match optimizer expectations)
     df['date'] = data.index
-    df['open'] = data['Open'].values
-    df['high'] = data['High'].values
-    df['low'] = data['Low'].values
-    df['close'] = data['Close'].values
-    df['volume'] = data['Volume'].values
+    df['Open'] = data['Open'].values
+    df['High'] = data['High'].values
+    df['Low'] = data['Low'].values
+    df['Close'] = data['Close'].values
+    df['Volume'] = data['Volume'].values
     df['ticker'] = ticker
     
     # Set index
@@ -157,10 +157,10 @@ def process_ticker(ticker, data, benchmark_close):
     
     # Calculate True Range
     df['tr'] = np.maximum(
-        df['high'] - df['low'],
+        df['High'] - df['Low'],
         np.maximum(
-            abs(df['high'] - df['close'].shift(1)),
-            abs(df['low'] - df['close'].shift(1))
+            abs(df['High'] - df['Close'].shift(1)),
+            abs(df['Low'] - df['Close'].shift(1))
         )
     )
     
@@ -168,31 +168,31 @@ def process_ticker(ticker, data, benchmark_close):
     df['atr'] = df['tr'].rolling(14).mean()
     
     # CyberCycle
-    df['cyber_cycle'] = calculate_cyber_cycle(df['close'])
+    df['cyber_cycle'] = calculate_cyber_cycle(df['Close'])
     
     # Swing Value and VIndex
-    df['swing_value'] = calculate_swing_value(df['high'], df['low'], df['close'])
-    df['vindex'] = calculate_vindex(df['high'], df['low'], df['close'])
+    df['swing_value'] = calculate_swing_value(df['High'], df['Low'], df['Close'])
+    df['vindex'] = calculate_vindex(df['High'], df['Low'], df['Close'])
     
     # iTrend (Daily and Weekly approximation)
-    df['itrend_d'] = calculate_itrend(df['close'], period=20)
-    df['itrend_w'] = calculate_itrend(df['close'], period=100)  # ~5 weeks
+    df['itrend_d'] = calculate_itrend(df['Close'], period=20)
+    df['itrend_w'] = calculate_itrend(df['Close'], period=100)  # ~5 weeks
     
     # RSL calculations
     benchmark_aligned = benchmark_close.reindex(df.index).ffill()
     
-    df['rsl_close'] = calculate_rsl(df['close'], benchmark_aligned).values
-    df['rsl_itrend_d'] = calculate_rsl(df['close'], benchmark_aligned, period=20).values
-    df['rsl_itrend_w'] = calculate_rsl(df['close'], benchmark_aligned, period=100).values
+    df['rsl_close'] = calculate_rsl(df['Close'], benchmark_aligned).values
+    df['rsl_itrend_d'] = calculate_rsl(df['Close'], benchmark_aligned, period=20).values
+    df['rsl_itrend_w'] = calculate_rsl(df['Close'], benchmark_aligned, period=100).values
     
     # Weekly low (rolling 5 days)
-    df['weekly_low'] = df['low'].rolling(5).min()
+    df['weekly_low'] = df['Low'].rolling(5).min()
     
     # Previous values
-    df['close_prev'] = df['close'].shift(1)
-    df['close_prev2'] = df['close'].shift(2)
-    df['low_prev'] = df['low'].shift(1)
-    df['high_prev'] = df['high'].shift(1)
+    df['close_prev'] = df['Close'].shift(1)
+    df['close_prev2'] = df['Close'].shift(2)
+    df['low_prev'] = df['Low'].shift(1)
+    df['high_prev'] = df['High'].shift(1)
     
     # Swing trend
     df['swing_trend'] = np.where(df['swing_value'] > 0, 1, -1)
