@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
-Generate preprocessed indicator data for US100 stocks.
-Downloads price data via yfinance and calculates all required indicators.
+Generate preprocessed indicator data for US100 stocks using FMP API.
+Downloads price data via Financial Modeling Prep and calculates all required indicators.
 """
 
 import pandas as pd
 import numpy as np
-import yfinance as yf
+import requests
 from pathlib import Path
 from datetime import datetime, timedelta
+import os
 import warnings
 warnings.filterwarnings('ignore')
+
+# FMP API Key - set as environment variable or replace here
+FMP_API_KEY = os.environ.get('FMP_API_KEY', 'YOUR_FMP_API_KEY')
 
 # US100 Constituents (NASDAQ-100)
 US100_TICKERS = [
@@ -76,24 +80,63 @@ def calculate_itrend(close, period=20):
     return itrend
 
 
-def download_ticker_data(ticker, start_date, end_date):
-    """Download OHLCV data for a single ticker."""
+def download_fmp_data(ticker, start_date, end_date, api_key):
+    """Download OHLCV data from FMP for a single ticker."""
     try:
-        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
-        if len(data) < 100:
-            print(f"  Skipping {ticker}: insufficient data ({len(data)} rows)")
+        url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{ticker}"
+        params = {
+            'apikey': api_key,
+            'from': start_date.strftime('%Y-%m-%d'),
+            'to': end_date.strftime('%Y-%m-%d')
+        }
+        
+        response = requests.get(url, params=params)
+        data = response.json()
+        
+        if 'historical' not in data or len(data['historical']) < 100:
+            print(f"  Skipping {ticker}: insufficient data")
             return None
-        return data
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(data['historical'])
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.sort_values('date').set_index('date')
+        
+        # Rename columns to standard format
+        df = df.rename(columns={
+            'open': 'Open',
+            'high': 'High',
+            'low': 'Low',
+            'close': 'Close',
+            'volume': 'Volume'
+        })
+        
+        return df[['Open', 'High', 'Low', 'Close', 'Volume']]
+        
     except Exception as e:
         print(f"  Error downloading {ticker}: {e}")
         return None
 
 
-def download_benchmark(start_date, end_date):
-    """Download NASDAQ-100 benchmark data."""
+def download_benchmark(start_date, end_date, api_key):
+    """Download NASDAQ-100 benchmark data (QQQ)."""
     print("Downloading benchmark (QQQ)...")
-    benchmark = yf.download('QQQ', start=start_date, end=end_date, progress=False)
-    return benchmark['Close']
+    
+    url = f"https://financialmodelingprep.com/api/v3/historical-price-full/QQQ"
+    params = {
+        'apikey': api_key,
+        'from': start_date.strftime('%Y-%m-%d'),
+        'to': end_date.strftime('%Y-%m-%d')
+    }
+    
+    response = requests.get(url, params=params)
+    data = response.json()
+    
+    df = pd.DataFrame(data['historical'])
+    df['date'] = pd.to_datetime(df['date'])
+    df = df.sort_values('date').set_index('date')
+    
+    return df['close']
 
 
 def process_ticker(ticker, data, benchmark_close):
@@ -138,9 +181,9 @@ def process_ticker(ticker, data, benchmark_close):
     # RSL calculations
     benchmark_aligned = benchmark_close.reindex(df.index).ffill()
     
-    df['rsl_close'] = calculate_rsl(df['close'], benchmark_aligned)
-    df['rsl_itrend_d'] = calculate_rsl(df['close'], benchmark_aligned, period=20)
-    df['rsl_itrend_w'] = calculate_rsl(df['close'], benchmark_aligned, period=100)
+    df['rsl_close'] = calculate_rsl(df['close'], benchmark_aligned).values
+    df['rsl_itrend_d'] = calculate_rsl(df['close'], benchmark_aligned, period=20).values
+    df['rsl_itrend_w'] = calculate_rsl(df['close'], benchmark_aligned, period=100).values
     
     # Weekly low (rolling 5 days)
     df['weekly_low'] = df['low'].rolling(5).min()
@@ -160,8 +203,17 @@ def process_ticker(ticker, data, benchmark_close):
     return df
 
 
-def generate_all_data(output_dir, years=3):
+def generate_all_data(output_dir, years=3, api_key=None):
     """Generate preprocessed data for all US100 tickers."""
+    if api_key is None:
+        api_key = FMP_API_KEY
+    
+    if api_key == 'YOUR_FMP_API_KEY':
+        print("ERROR: Please set your FMP API key!")
+        print("  Option 1: export FMP_API_KEY='your_key_here'")
+        print("  Option 2: python generate_data.py --api-key your_key_here")
+        return
+    
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
@@ -175,7 +227,7 @@ def generate_all_data(output_dir, years=3):
     print()
     
     # Download benchmark
-    benchmark_close = download_benchmark(start_date, end_date)
+    benchmark_close = download_benchmark(start_date, end_date, api_key)
     
     # Process each ticker
     successful = 0
@@ -185,7 +237,7 @@ def generate_all_data(output_dir, years=3):
         print(f"[{i}/{len(US100_TICKERS)}] Processing {ticker}...", end=" ")
         
         # Download data
-        data = download_ticker_data(ticker, start_date, end_date)
+        data = download_fmp_data(ticker, start_date, end_date, api_key)
         if data is None:
             failed += 1
             continue
@@ -216,13 +268,14 @@ def generate_all_data(output_dir, years=3):
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description='Generate preprocessed indicator data')
+    parser = argparse.ArgumentParser(description='Generate preprocessed indicator data using FMP')
     parser.add_argument('--output', '-o', type=str, default='preprocessed',
                         help='Output directory for CSV files')
     parser.add_argument('--years', '-y', type=int, default=3,
                         help='Years of historical data to download')
+    parser.add_argument('--api-key', '-k', type=str, default=None,
+                        help='FMP API key (or set FMP_API_KEY env variable)')
     
     args = parser.parse_args()
     
-    generate_all_data(args.output, args.years)
-
+    generate_all_data(args.output, args.years, args.api_key)
